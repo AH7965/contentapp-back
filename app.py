@@ -45,6 +45,10 @@ import json
 
 import gc
 
+import slackweb
+
+slack = slackweb.Slack(url="https://hooks.slack.com/services/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")
+
 
 from generate import generate, generate1, generate2p
 
@@ -108,6 +112,11 @@ mean_latent = None
 
 @app.route("/wakeup_test")
 def hello():
+    if request.headers.getlist("X-Forwarded-For"):
+        ip = request.headers.getlist("X-Forwarded-For")[0]
+    else:
+        ip = request.remote_addr
+    slack.notify(text=f"eNNergy Drink Wakeup : {ip} \n {request.environ['HTTP_USER_AGENT']}")
     return "world"
 
 
@@ -183,6 +192,9 @@ def random_generate_gif2():
         img_base64 = base64.b64encode(f.read()).decode('utf-8')
     rets['img'] = img_base64
 
+    gc.collect()
+    torch.cuda.empty_cache
+
     return jsonify(rets)
 
 @app.route('/generate_gif3', methods=["POST"])
@@ -205,6 +217,7 @@ def random_generate_gif3():
         r1 = float(request.form.get('r1'))
     else:
         r1 = 0.125
+    r1 = random.random()*r1*2
 
     if request.form.get('r2') is not None:
         r2 = float(request.form.get('r2'))
@@ -219,7 +232,7 @@ def random_generate_gif3():
     latent2 = torch.FloatTensor(latent).to(device)
 
     output_filepath = os.path.join('output/', filename)
-    center_latent = latent2 + r1*torch.randn(512, device=device)
+    center_latent = latent2 + r1*(torch.randn(512, device=device)-0.5)*2
     generate2p(g_ema, device, mean_latent, center_latent, r2, 32, filename=output_filepath)
 
     rets['latent'] = center_latent.cpu().numpy().tolist()
@@ -227,6 +240,9 @@ def random_generate_gif3():
     with open(output_filepath, "rb") as f:
         img_base64 = base64.b64encode(f.read()).decode('utf-8')
     rets['img'] = img_base64
+
+    gc.collect()
+    torch.cuda.empty_cache
 
     return jsonify(rets)
 
@@ -263,6 +279,9 @@ def random_get_num():
 
         counter = (counter + 1) % 100
 
+    gc.collect()
+    torch.cuda.empty_cache
+
     return jsonify(rets)
 
 @app.route('/generate_gif', methods=["POST"])
@@ -291,6 +310,9 @@ def random_get_num_gif():
         rets['img'].append(img_base64)
 
         counter = (counter + 1) % 100
+
+    gc.collect()
+    torch.cuda.empty_cache
 
     return jsonify(rets)
 

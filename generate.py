@@ -10,7 +10,6 @@ import numpy as np
 import random
 
 import os
-
 def make_image(tensor):
     return (
         tensor.detach()
@@ -33,7 +32,7 @@ def save_gif(img_name, img_ar):
     pil_img.save(img_name, 
                  save_all=True, 
                  append_images = [Image.fromarray(img_ar[i]) for i in range(1,len(img_ar))], 
-                 duration=100, 
+                 duration=80, 
                  loop=0)
 
 
@@ -45,33 +44,17 @@ def save_png(img_name, img_ar):
     pil_img.save(img_name)
 
 
+def generate1(g_ema, device, mean_latent, outputname='output.png'):
 
-def wrapped_generate(pics, ckpt, device, mean_latent, output_dir='output'):
-    g_ema = Generator(
-    128, 512, 8, channel_multiplier=2
-    ).to(device)
-    checkpoint = torch.load(ckpt)
+    with torch.no_grad():
+        g_ema.eval()
+        sample_z = torch.randn(1, 512, device=device)
 
-    g_ema.load_state_dict(checkpoint["g_ema"])
-    return generate(pics, g_ema, device, mean_latent, output_dir)
+        sample, _ = g_ema(
+            [sample_z], truncation=1, truncation_latent=mean_latent
+        )
 
-def wrapped_generate2(pics, ckpt, device, mean_latent, output_dir='output'):
-    g_ema = Generator(
-    128, 512, 8, channel_multiplier=2
-    ).to(device)
-    checkpoint = torch.load(ckpt)
-
-    g_ema.load_state_dict(checkpoint["g_ema"])
-    return generate2(pics, g_ema, device, mean_latent, output_dir)
-
-def wrapped_generate2p(ckpt, device, mean_latent, center_latent, r1, mj, filename):
-    g_ema = Generator(
-    128, 512, 8, channel_multiplier=2
-    ).to(device)
-    checkpoint = torch.load(ckpt)
-
-    g_ema.load_state_dict(checkpoint["g_ema"])
-    return generate2p(g_ema, device, mean_latent, center_latent, r1, mj, filename)
+        save_png(outputname, sample)
 
 
 def generate(pics, g_ema, device, mean_latent, output_dir='output'):
